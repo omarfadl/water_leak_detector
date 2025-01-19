@@ -14,6 +14,6 @@ DBUtils.add_sensors_to_existing_user(
     user_email="estaa.attia.amany@gmail.com",
     sensors_data=[
         {"sensor_name": "Smoke Sensor", "mac_address": "66:A7:A8:99:AA:BB"},
-        {"sensor_name": "Leak Sensor", "mac_address": "AC:DD:EE:FF:00:11"}
+        {"sensor_name": "Leak Sensor", "mac_address": "AC:FD:EE:FF:00:11"}
                   ])
 
