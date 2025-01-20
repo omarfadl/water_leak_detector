@@ -43,6 +43,29 @@ class DBUtils():
                 print("User not found")
                 return(False,"User not found")
 
+    # Query a user Data
+    @staticmethod
+    def query_user_data(user_email: str|None=None,user_id:int|None=None)->Tuple[bool,Tuple]|Tuple[bool,str]:
+        """
+        Query user data by using user_email
+
+        :param user_email: The email of the user.
+        """
+        
+        with Session() as session:
+            if user_id is not None:
+                user = session.query(User).filter_by(id=user_id).first()
+            else:
+                user = session.query(User).filter_by(email=user_email).first()
+            if user:
+                print(f"Fetched User: {user}")
+                # remove hashed password data
+                user.password_hashed=None
+                return(True,user)
+            else:
+                print("User not found")
+                return(False,"User not found")
+
     # Add sensor to an existing user
     @staticmethod
     def add_sensor_to_existing_user(user_email:str, sensor_name:str,mac_address:str)->Tuple[bool,str]:
@@ -116,5 +139,3 @@ class DBUtils():
             session.add(new_alert)
             session.commit()
             return (True, f"Alert added successfully with ID {new_alert.id}.")
-        
-# DBUtils.add_alert(email="soma@gmail.com",sensor_mac_address="00:11:22:33:44:55",status=True)

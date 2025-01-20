@@ -1,6 +1,8 @@
 from crud import DBUtils
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException,Query
 from pydantic import BaseModel,Field,EmailStr
+from pydantic_extra_types.mac_address import MacAddress
+
 
 app = FastAPI()
 
@@ -20,29 +22,26 @@ class AddAlert(BaseModel):
         description="This is the user email address", 
         examples=["user@gmail.com"]  # Use a list for examples
     )
-    staus: bool = Field(description="True for Active alert , False for Resolved")
+    status: bool = Field(description="True for Active alert , False for Resolved")
     sensor_mac_address: str = Field(
         ...,
         description="The MAC address of the sensor, in format XX:XX:XX:XX:XX:XX",
-        pattern=r"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$", 
-        example=["00:11:22:33:44:55"]
     )
 
 
 class AddSensorRequest(BaseModel):
     sensor_name: str = Field(..., description="The name of the sensor", example="Temperature Sensor")
-    mac_address: str = Field(
+    mac_address: MacAddress = Field(
         ...,
         description="The MAC address of the sensor, in format XX:XX:XX:XX:XX:XX",
-        pattern=r"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$", 
-        example=["00:11:22:33:44:55"]
     )
 
-@app.post("/add_alert/")
+# Submit alert data
+@app.post("/alerts/")
 async def add_alert(alert: AddAlert):
-    success, message = DBUtils.add_alert(email=alert.user_email, sensor_mac_address=alert.sensor_mac_address, status=alert.staus)
+    success, message = DBUtils.add_alert(email=alert.user_email, sensor_mac_address=alert.sensor_mac_address, status=alert.status)
     if not success:
-        raise HTTPException(status_code=400, detail=message)
+        raise HTTPException(status_code=404, detail=message)
     return {"message": message}
 
 # Add a user without sensors
@@ -56,10 +55,28 @@ def add_user(user: AddUserRequest):
 # Get user and their sensors
 @app.get("/users/{email}/sensors")
 async def get_user_sensors(email: str):
-    success, data = DBUtils.query_user_and_sensors(email)
+    success, message = DBUtils.query_user_and_sensors(email)
     if not success:
-        raise HTTPException(status_code=404, detail=data)
-    return {"sensors": data}
+        raise HTTPException(status_code=404, detail=message)
+    return {"sensors": message}
+
+
+# Get user data
+@app.get("/users/")
+async def get_user_data(
+    user_email: EmailStr | None = Query(None, description="User's email address"),
+    user_id: int | None = None
+):
+    if user_id:
+        success, message = DBUtils.query_user_data(user_id=user_id)
+    elif user_email:
+        success, message = DBUtils.query_user_data(user_email=user_email)
+    else:
+        raise HTTPException(status_code=400, detail="Either user_email or user_id must be provided.")
+    
+    if not success:
+        raise HTTPException(status_code=404, detail=message)
+    return {"data": message}
 
 # Add sensors to an existing user
 @app.post("/users/{email}/sensors")
