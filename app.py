@@ -17,7 +17,7 @@ class AddUserRequest(BaseModel):
     password_hashed: str
 
 class AddAlert(BaseModel):
-    user_email: EmailStr = Field(
+    email: EmailStr = Field(
         ..., 
         description="This is the user email address", 
         examples=["user@gmail.com"]  # Use a list for examples
@@ -39,7 +39,7 @@ class AddSensorRequest(BaseModel):
 # Submit alert data
 @app.post("/alerts/")
 async def add_alert(alert: AddAlert):
-    success, message = DBUtils.add_alert(email=alert.user_email, sensor_mac_address=alert.sensor_mac_address, status=alert.status)
+    success, message = DBUtils.add_alert(email=alert.email, sensor_mac_address=alert.sensor_mac_address, status=alert.status)
     if not success:
         raise HTTPException(status_code=404, detail=message)
     return {"message": message}
@@ -64,15 +64,15 @@ async def get_user_sensors(email: str):
 # Get user data
 @app.get("/users/")
 async def get_user_data(
-    user_email: EmailStr | None = Query(None, description="User's email address"),
+    email: EmailStr | None = Query(None, description="User's email address"),
     user_id: int | None = None
 ):
     if user_id:
         success, message = DBUtils.query_user_data(user_id=user_id)
-    elif user_email:
-        success, message = DBUtils.query_user_data(user_email=user_email)
+    elif email:
+        success, message = DBUtils.query_user_data(email=email)
     else:
-        raise HTTPException(status_code=400, detail="Either user_email or user_id must be provided.")
+        raise HTTPException(status_code=400, detail="Either user email or user_id must be provided.")
     
     if not success:
         raise HTTPException(status_code=404, detail=message)

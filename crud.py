@@ -6,6 +6,21 @@ from typing import Tuple
 Session= sessionmaker(engine)
 
 class DBUtils():
+    
+    @staticmethod
+    def is_sensor_owned_by_user(email: str, sensor_mac_address: str) -> bool:
+        """
+        Check if a sensor belongs to a specific user.
+        :param email: The email of the user.
+        :param sensor_mac_address: sensor mac address like "AA:BB:CC:DD:EE:FF"
+        """
+        with Session() as session:
+            user = session.query(User).filter_by(email=email).first()
+            if not user:
+                return False
+            sensor = session.query(Sensor).filter_by(mac_address=sensor_mac_address, user_id=user.id).first()
+            return sensor is not None
+        
     # Function to add a user without sensors
     @staticmethod
     def add_user_only(name:str, email:str, password_hashed:str)->Tuple[bool,str]:
@@ -32,9 +47,9 @@ class DBUtils():
 
     # Query a user and their sensors
     @staticmethod
-    def query_user_and_sensors(user_email: str)->Tuple[bool,list]|Tuple[bool,str]:
+    def query_user_and_sensors(email: str)->Tuple[bool,list]|Tuple[bool,str]:
         with Session() as session:
-            user = session.query(User).filter_by(email=user_email).first()
+            user = session.query(User).filter_by(email=email).first()
             if user:
                 print(f"Fetched User: {user}")
                 print(f"Associated Sensors: {user.sensors}")
@@ -45,22 +60,20 @@ class DBUtils():
 
     # Query a user Data
     @staticmethod
-    def query_user_data(user_email: str|None=None,user_id:int|None=None)->Tuple[bool,Tuple]|Tuple[bool,str]:
+    def query_user_data(email: str|None=None,user_id:int|None=None)->Tuple[bool,Tuple]|Tuple[bool,str]:
         """
-        Query user data by using user_email
+        Query user data by using user email
 
-        :param user_email: The email of the user.
+        :param email: The email of the user.
         """
         
         with Session() as session:
             if user_id is not None:
                 user = session.query(User).filter_by(id=user_id).first()
             else:
-                user = session.query(User).filter_by(email=user_email).first()
+                user = session.query(User).filter_by(email=email).first()
             if user:
                 print(f"Fetched User: {user}")
-                # remove hashed password data
-                user.password_hashed=None
                 return(True,user)
             else:
                 print("User not found")
@@ -68,19 +81,19 @@ class DBUtils():
 
     # Add sensor to an existing user
     @staticmethod
-    def add_sensor_to_existing_user(user_email:str, sensor_name:str,mac_address:str)->Tuple[bool,str]:
+    def add_sensor_to_existing_user(email:str, sensor_name:str,mac_address:str)->Tuple[bool,str]:
         """
         Add sensors to an existing user.
 
-        :param user_email: The email of the user to whom sensors should be added.
+        :param email: The email of the user to whom sensors should be added.
         :param sensors_name: name of the sensor like LeakSensor Sensorhumidity
         :param mac_address: sensor mac_address "AA:BB:CC:DD:EE:FF"
         """
         with Session() as session:
             # Query the user
-            user = session.query(User).filter_by(email=user_email).first()
+            user = session.query(User).filter_by(email=email).first()
             if not user:
-                print(f"User with email {user_email} not found.")
+                print(f"User with email {email} not found.")
                 return(False,f"User not found")
             # Add new sensors
             new_sensor = Sensor(sensor_name=sensor_name, mac_address=mac_address, user=user)
@@ -96,9 +109,9 @@ class DBUtils():
 
     # Delete a user and cascade delete their sensors
     @staticmethod
-    def delete_user_and_cascade(user_email:str):
+    def delete_user_and_cascade(email:str):
         with Session() as session:
-            user_to_delete = session.query(User).filter_by(email=user_email).first()
+            user_to_delete = session.query(User).filter_by(email=email).first()
             if user_to_delete:
                 print(f"Deleting User: {user_to_delete}")
                 session.delete(user_to_delete)
@@ -139,3 +152,32 @@ class DBUtils():
             session.add(new_alert)
             session.commit()
             return (True, f"Alert added successfully with ID {new_alert.id}.")
+        
+    # Query a user Alerts
+    @staticmethod
+    def query_user_alerts(email: str|None=None,user_id:int|None=None)->Tuple[bool,Tuple]|Tuple[bool,str]:
+        """
+        Query user alerts by using user email or user_id
+
+        :param email: The email of the user.
+        """
+        
+        with Session() as session:
+            if user_id is not None:
+                user = session.query(User).filter_by(id=user_id).first()
+            else:
+                user = session.query(User).filter_by(email=email).first()
+            if user:
+                print(f"Fetched User: {user}")
+            else:
+                print("User not found")
+                return(False,"User not found")
+            alerts_query=session.query(Alert).filter_by(user_id=user.id).limit(3)
+            alerts_data = alerts_query.all()
+            if alerts_data and len(alerts_data)>0:
+                return(True,alerts_data)
+            return(False,"No Alerts Found")
+                
+            
+            
+            
